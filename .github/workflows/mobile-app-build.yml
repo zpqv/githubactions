@@ -8,10 +8,10 @@ on:
         required: true
 
 jobs:
-  setup:
+  build:
     runs-on: macos-13
-    outputs:
-      repo-path: ${{ steps.clone.outputs.repo-path }}
+    env:
+      FLUTTER_HOME: ~/.flutter
 
     steps:
       - name: Check Secrets (safe debug)
@@ -21,40 +21,37 @@ jobs:
         env:
           AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
           AZURE_PAT: ${{ secrets.AZURE_PAT }}
-          
+
       - name: Checkout this GitHub repo
         uses: actions/checkout@v4
 
       - name: Clone Azure DevOps project
-        id: clone
         run: |
           git config --global http.sslVerify false
-          git clone https://${{ secrets.AZURE_GIT_USERNAME }}:${{ secrets.AZURE_PAT }}@${{ github.event.inputs.project_url }} project
-          echo "::set-output name=repo-path::project"
+          git clone https://${AZURE_GIT_USERNAME}:${AZURE_PAT}@${{ github.event.inputs.project_url }} project
+        env:
+          AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
+          AZURE_PAT: ${{ secrets.AZURE_PAT }}
 
-  build:
-    needs: setup
-    runs-on: macos-13
-    defaults:
-      run:
-        working-directory: ${{ needs.setup.outputs.repo-path }}
-
-    steps:
       - name: Cache Flutter SDK
+        id: flutter-cache
         uses: actions/cache@v3
         with:
           path: ~/.flutter
-          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.yaml') }}
+          key: ${{ runner.os }}-flutter-stable
           restore-keys: |
             ${{ runner.os }}-flutter-
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: latest
-          channel: stable
+      - name: Install Flutter if not cached
+        if: steps.flutter-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/flutter/flutter.git -b stable ~/.flutter
+
+      - name: Add Flutter to PATH
+        run: echo "$HOME/.flutter/bin" >> $GITHUB_PATH
 
       - name: Cache Homebrew
+        id: brew-cache
         uses: actions/cache@v3
         with:
           path: |
@@ -62,13 +59,15 @@ jobs:
             ~/.brew-cache
           key: ${{ runner.os }}-brew-cache
 
-      - name: Install Homebrew and Fastlane
+      - name: Install Homebrew and Fastlane if not cached
+        if: steps.brew-cache.outputs.cache-hit != 'true'
         run: |
-          export HOMEBREW_CACHE="${HOME}/.brew-cache"
+          export HOMEBREW_CACHE="$HOME/.brew-cache"
           mkdir -p $HOMEBREW_CACHE
           brew install fastlane
 
       - name: Cache Ruby Gems
+        id: gems-cache
         uses: actions/cache@v3
         with:
           path: vendor/bundle
@@ -76,11 +75,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gems-
 
-      - name: Install Bundler and Fastlane (Ruby)
+      - name: Install Bundler and Fastlane (Ruby) if not cached
+        if: steps.gems-cache.outputs.cache-hit != 'true'
         run: |
           gem install bundler
           bundle config path vendor/bundle
-          bundle install || true  # Skip if no Gemfile
+          bundle install || true
 
       - name: Setup Java 17 + Gradle cache
         uses: actions/setup-java@v4
@@ -89,41 +89,43 @@ jobs:
           distribution: temurin
           cache: gradle
 
-  #     - name: Setup Android/iOS Secrets
-  #       run: |
-  #         echo "${{ secrets.IOS_API_KEY_JSON }}" | base64 --decode > ios/ios_api_key.json
-  #         echo "${{ secrets.KEYPROP_PROPERTIES }}" | base64 --decode > android/key.properties
-  #         echo "${{ secrets.KEY_JKS }}" | base64 --decode > android/key.jks
-  #         mkdir -p assets/config/android
-  #         echo "${{ secrets.ANDROID_SERVICE_JSON }}" | base64 --decode > assets/config/android/api_key_info.json
-          
+      # - name: Setup Android/iOS Secrets
+      #   run: |
+      #     echo "${{ secrets.IOS_API_KEY_JSON }}" | base64 --decode > project/ios/ios_api_key.json
+      #     echo "${{ secrets.KEYPROP_PROPERTIES }}" | base64 --decode > project/android/key.properties
+      #     echo "${{ secrets.KEY_JKS }}" | base64 --decode > project/android/key.jks
+      #     mkdir -p project/assets/config/android
+      #     echo "${{ secrets.ANDROID_SERVICE_JSON }}" | base64 --decode > project/assets/config/android/api_key_info.json
 
-  #     - name: Import iOS Certificate
-  #       uses: apple-actions/import-codesign-certs@v1
-  #       with:
-  #         p12-file-base64: ${{ secrets.KEY_P12 }}
-  #         p12-password: ${{ secrets.IOS_CERT_PASSWORD }}
+      # - name: Import iOS Certificate
+      #   uses: apple-actions/import-codesign-certs@v1
+      #   with:
+      #     p12-file-base64: ${{ secrets.KEY_P12 }}
+      #     p12-password: ${{ secrets.IOS_CERT_PASSWORD }}
 
-  #     - name: Flutter Pub Get
-  #       run: flutter pub get
+      # - name: Flutter Pub Get
+      #   run: flutter pub get
+      #   working-directory: project
 
-  #     - name: Build Android AAB
-  #       run: flutter build appbundle --no-tree-shake-icons
+      # - name: Build Android AAB
+      #   run: flutter build appbundle --no-tree-shake-icons
+      #   working-directory: project
 
-  #     - name: Build iOS IPA
-  #       run: flutter build ipa --export-options-plist=ios/ExportOptions.plist --no-tree-shake-icons
+      # - name: Build iOS IPA
+      #   run: flutter build ipa --export-options-plist=ios/ExportOptions.plist --no-tree-shake-icons
+      #   working-directory: project
 
       # - name: Publish Android
       #   run: fastlane beta
-      #   working-directory: android
+      #   working-directory: project/android
 
       # - name: Publish iOS
       #   run: fastlane beta
-      #   working-directory: ios
+      #   working-directory: project/ios
 
       # - name: Notify Upload Success
       #   run: |
-      #     CONFIG_FILE="assets/config/config.json"
+      #     CONFIG_FILE="project/assets/config/config.json"
       #     engineName=$(grep 'engineName' "$CONFIG_FILE" | awk -F': ' '{print $2}' | tr -d '",')
       #     businessIdeaId=$(grep 'businessIdeaId' "$CONFIG_FILE" | awk -F': ' '{print $2}' | tr -d '",')
       #     repoName=$(echo "${{ github.repository }}" | cut -d'/' -f2)
