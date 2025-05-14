@@ -99,23 +99,23 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           echo "${{ secrets.IOS_PROVISION_PROFILE }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
 
-      # - name: Import iOS Certificate
-      #   uses: apple-actions/import-codesign-certs@v1
-      #   with:
-      #     p12-file-base64: ${{ secrets.KEY_P12 }}
-      #     p12-password: ${{ secrets.IOS_CERT_PASSWORD }}
+      - name: Import iOS Certificate
+        uses: apple-actions/import-codesign-certs@v1
+        with:
+          p12-file-base64: ${{ secrets.KEY_P12 }}
+          p12-password: ${{ secrets.IOS_CERT_PASSWORD }}
 
-      # - name: Flutter Pub Get
-      #   run: flutter pub get
-      #   working-directory: project
+      - name: Flutter Pub Get
+        run: flutter pub get
+        working-directory: project
 
-      # - name: Build Android AAB
-      #   run: flutter build appbundle --no-tree-shake-icons
-      #   working-directory: project
+      - name: Build Android AAB
+        run: flutter build appbundle --no-tree-shake-icons
+        working-directory: project
 
-      # - name: Build iOS IPA
-      #   run: flutter build ipa --export-options-plist=ios/ExportOptions.plist --no-tree-shake-icons
-      #   working-directory: project
+      - name: Build iOS IPA
+        run: flutter build ipa --export-options-plist=ios/ExportOptions.plist --no-tree-shake-icons
+        working-directory: project
 
       # - name: Publish Android
       #   run: fastlane beta
