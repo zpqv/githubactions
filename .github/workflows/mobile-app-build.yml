@@ -147,9 +147,9 @@ jobs:
         run: cat ExportOptions.plist
         working-directory: project/ios
 
-      # - name: Build Android AAB
-      #   run: flutter build appbundle --no-tree-shake-icons
-      #   working-directory: project
+      - name: Build Android AAB
+        run: flutter build appbundle --no-tree-shake-icons
+        working-directory: project
 
       - name: Build iOS IPA
         run: flutter build ipa --export-options-plist=ios/ExportOptions.plist --no-tree-shake-icons
