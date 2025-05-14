@@ -51,12 +51,17 @@ jobs:
         run: echo "$HOME/.flutter/bin" >> $GITHUB_PATH
 
       - name: Cache Pub Packages
+        id: pub-cache
         uses: actions/cache@v3
         with:
           path: ~/.pub-cache
           key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: |
             ${{ runner.os }}-pub-
+
+      - name: Install Pub Packages
+        run: flutter pub get
+        working-directory: project
 
       - name: Cache Homebrew
         id: brew-cache
@@ -119,17 +124,13 @@ jobs:
       - name: Install Apple Provisioning Profile
         run: |
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "${{ secrets.IOS_PROVISION_PROFILE }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/$(basename ${{ secrets.IOS_PROVISION_PROFILE_NAME }}.mobileprovision)
+          echo "${{ secrets.IOS_PROVISION_PROFILE }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/${{ secrets.IOS_PROVISION_PROFILE_NAME }}.mobileprovision
 
       - name: Import iOS Certificate
         uses: apple-actions/import-codesign-certs@v1
         with:
           p12-file-base64: ${{ secrets.KEY_P12 }}
           p12-password: ${{ secrets.IOS_CERT_PASSWORD }}
-
-      - name: Flutter Pub Get
-        run: flutter pub get
-        working-directory: project
 
       - name: Build Android AAB
         run: flutter build appbundle --no-tree-shake-icons
@@ -138,6 +139,7 @@ jobs:
       - name: Build iOS IPA
         run: flutter build ipa --export-options-plist=ios/ExportOptions.plist --no-tree-shake-icons
         working-directory: project
+
 
 
       # - name: Publish Android
