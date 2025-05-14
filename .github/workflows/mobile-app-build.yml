@@ -135,6 +135,18 @@ jobs:
           p12-file-base64: ${{ secrets.KEY_P12 }}
           p12-password: ${{ secrets.IOS_CERT_PASSWORD }}
 
+      - name: Get iOS App version from App Store
+        run: fastlane version_update --verbose
+        working-directory: project/ios
+
+      - name: Configuring Xcode project
+        run: fastlane configXcode --verbose
+        working-directory: project/ios
+
+      - name: Reading ExportOptions
+        run: cat ExportOptions.plist
+        working-directory: project/ios
+
       # - name: Build Android AAB
       #   run: flutter build appbundle --no-tree-shake-icons
       #   working-directory: project
