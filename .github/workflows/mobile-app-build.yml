@@ -89,13 +89,15 @@ jobs:
           distribution: temurin
           cache: gradle
 
-      # - name: Setup Android/iOS Secrets
-      #   run: |
-      #     echo "${{ secrets.IOS_API_KEY_JSON }}" | base64 --decode > project/ios/ios_api_key.json
-      #     echo "${{ secrets.KEYPROP_PROPERTIES }}" | base64 --decode > project/android/key.properties
-      #     echo "${{ secrets.KEY_JKS }}" | base64 --decode > project/android/key.jks
-      #     mkdir -p project/assets/config/android
-      #     echo "${{ secrets.ANDROID_SERVICE_JSON }}" | base64 --decode > project/assets/config/android/api_key_info.json
+      - name: Setup Android/iOS Secrets
+        run: |
+          echo "${{ secrets.IOS_API_KEY_JSON }}" | base64 --decode > project/ios/ios_api_key.json
+          echo "${{ secrets.KEYPROP_PROPERTIES }}" | base64 --decode > project/android/key.properties
+          echo "${{ secrets.KEY_JKS }}" | base64 --decode > project/android/key.jks
+          mkdir -p project/assets/config/android
+          echo "${{ secrets.ANDROID_SERVICE_JSON }}" | base64 --decode > project/assets/config/android/api_key_info.json
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "${{ secrets.IOS_PROVISION_PROFILE }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
 
       # - name: Import iOS Certificate
       #   uses: apple-actions/import-codesign-certs@v1
