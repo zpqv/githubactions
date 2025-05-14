@@ -119,7 +119,7 @@ jobs:
           mkdir -p project/assets/config/android
           echo "${{ secrets.ANDROID_SERVICE_JSON }}" | base64 --decode > project/assets/config/android/api_key_info.json
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "${{ secrets.IOS_PROVISION_PROFILE }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+          echo "${{ secrets.IOS_PROVISION_PROFILE }}" | base64 --decode > project/ios//profile.mobileprovision
 
       - name: Install Apple Provisioning Profile
         run: |
