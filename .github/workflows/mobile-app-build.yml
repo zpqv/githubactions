@@ -22,15 +22,15 @@ jobs:
           AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
           AZURE_PAT: ${{ secrets.AZURE_PAT }}
           
-  #     - name: Checkout this GitHub repo
-  #       uses: actions/checkout@v4
+      - name: Checkout this GitHub repo
+        uses: actions/checkout@v4
 
-  #     - name: Clone Azure DevOps project
-  #       id: clone
-  #       run: |
-  #         git config --global http.sslVerify false
-  #         git clone https://${{ secrets.AZURE_GIT_USERNAME }}:${{ secrets.AZURE_PAT }}@${{ github.event.inputs.project_url }} project
-  #         echo "::set-output name=repo-path::project"
+      - name: Clone Azure DevOps project
+        id: clone
+        run: |
+          git config --global http.sslVerify false
+          git clone https://${{ secrets.AZURE_GIT_USERNAME }}:${{ secrets.AZURE_PAT }}@${{ github.event.inputs.project_url }} project
+          echo "::set-output name=repo-path::project"
 
   # build:
   #   needs: setup
