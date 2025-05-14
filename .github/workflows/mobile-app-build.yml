@@ -1,4 +1,4 @@
-name: Azure Flutter Build
+name: Mobile App Build
 
 on:
   workflow_dispatch:
