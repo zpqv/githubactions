@@ -14,96 +14,104 @@ jobs:
       repo-path: ${{ steps.clone.outputs.repo-path }}
 
     steps:
-      - name: Checkout this GitHub repo
-        uses: actions/checkout@v4
-
-      - name: Clone Azure DevOps project
-        id: clone
+      - name: Check Secrets (safe debug)
         run: |
-          git config --global http.sslVerify false
-          git clone https://${{ secrets.AZURE_GIT_USERNAME }}:${{ secrets.AZURE_PAT }}@${{ github.event.inputs.project_url }} project
-          echo "::set-output name=repo-path::project"
+          echo "Git user is set: ${AZURE_GIT_USERNAME:+yes}"
+          echo "PAT is set: ${AZURE_PAT:+yes}"
+        env:
+          AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
+          AZURE_PAT: ${{ secrets.AZURE_PAT }}
+          
+  #     - name: Checkout this GitHub repo
+  #       uses: actions/checkout@v4
 
-  build:
-    needs: setup
-    runs-on: macos-13
-    defaults:
-      run:
-        working-directory: ${{ needs.setup.outputs.repo-path }}
+  #     - name: Clone Azure DevOps project
+  #       id: clone
+  #       run: |
+  #         git config --global http.sslVerify false
+  #         git clone https://${{ secrets.AZURE_GIT_USERNAME }}:${{ secrets.AZURE_PAT }}@${{ github.event.inputs.project_url }} project
+  #         echo "::set-output name=repo-path::project"
 
-    steps:
-      - name: Cache Flutter SDK
-        uses: actions/cache@v3
-        with:
-          path: ~/.flutter
-          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-flutter-
+  # build:
+  #   needs: setup
+  #   runs-on: macos-13
+  #   defaults:
+  #     run:
+  #       working-directory: ${{ needs.setup.outputs.repo-path }}
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: latest
-          channel: stable
+  #   steps:
+  #     - name: Cache Flutter SDK
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: ~/.flutter
+  #         key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.yaml') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-flutter-
 
-      - name: Cache Homebrew
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/Library/Caches/Homebrew
-            ~/.brew-cache
-          key: ${{ runner.os }}-brew-cache
+  #     - name: Setup Flutter
+  #       uses: subosito/flutter-action@v2
+  #       with:
+  #         flutter-version: latest
+  #         channel: stable
 
-      - name: Install Homebrew and Fastlane
-        run: |
-          export HOMEBREW_CACHE="${HOME}/.brew-cache"
-          mkdir -p $HOMEBREW_CACHE
-          brew install fastlane
+  #     - name: Cache Homebrew
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: |
+  #           ~/Library/Caches/Homebrew
+  #           ~/.brew-cache
+  #         key: ${{ runner.os }}-brew-cache
 
-      - name: Cache Ruby Gems
-        uses: actions/cache@v3
-        with:
-          path: vendor/bundle
-          key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-gems-
+  #     - name: Install Homebrew and Fastlane
+  #       run: |
+  #         export HOMEBREW_CACHE="${HOME}/.brew-cache"
+  #         mkdir -p $HOMEBREW_CACHE
+  #         brew install fastlane
 
-      - name: Install Bundler and Fastlane (Ruby)
-        run: |
-          gem install bundler
-          bundle config path vendor/bundle
-          bundle install || true  # Skip if no Gemfile
+  #     - name: Cache Ruby Gems
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: vendor/bundle
+  #         key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-gems-
 
-      - name: Setup Java 17 + Gradle cache
-        uses: actions/setup-java@v4
-        with:
-          java-version: 17
-          distribution: temurin
-          cache: gradle
+  #     - name: Install Bundler and Fastlane (Ruby)
+  #       run: |
+  #         gem install bundler
+  #         bundle config path vendor/bundle
+  #         bundle install || true  # Skip if no Gemfile
 
-      - name: Setup Android/iOS Secrets
-        run: |
-          echo "${{ secrets.IOS_API_KEY_JSON }}" | base64 --decode > ios/ios_api_key.json
-          echo "${{ secrets.KEYPROP_PROPERTIES }}" | base64 --decode > android/key.properties
-          echo "${{ secrets.KEY_JKS }}" | base64 --decode > android/key.jks
-          mkdir -p assets/config/android
-          echo "${{ secrets.ANDROID_SERVICE_JSON }}" | base64 --decode > assets/config/android/api_key_info.json
+  #     - name: Setup Java 17 + Gradle cache
+  #       uses: actions/setup-java@v4
+  #       with:
+  #         java-version: 17
+  #         distribution: temurin
+  #         cache: gradle
+
+  #     - name: Setup Android/iOS Secrets
+  #       run: |
+  #         echo "${{ secrets.IOS_API_KEY_JSON }}" | base64 --decode > ios/ios_api_key.json
+  #         echo "${{ secrets.KEYPROP_PROPERTIES }}" | base64 --decode > android/key.properties
+  #         echo "${{ secrets.KEY_JKS }}" | base64 --decode > android/key.jks
+  #         mkdir -p assets/config/android
+  #         echo "${{ secrets.ANDROID_SERVICE_JSON }}" | base64 --decode > assets/config/android/api_key_info.json
           
 
-      - name: Import iOS Certificate
-        uses: apple-actions/import-codesign-certs@v1
-        with:
-          p12-file-base64: ${{ secrets.KEY_P12 }}
-          p12-password: ${{ secrets.IOS_CERT_PASSWORD }}
+  #     - name: Import iOS Certificate
+  #       uses: apple-actions/import-codesign-certs@v1
+  #       with:
+  #         p12-file-base64: ${{ secrets.KEY_P12 }}
+  #         p12-password: ${{ secrets.IOS_CERT_PASSWORD }}
 
-      - name: Flutter Pub Get
-        run: flutter pub get
+  #     - name: Flutter Pub Get
+  #       run: flutter pub get
 
-      - name: Build Android AAB
-        run: flutter build appbundle --no-tree-shake-icons
+  #     - name: Build Android AAB
+  #       run: flutter build appbundle --no-tree-shake-icons
 
-      - name: Build iOS IPA
-        run: flutter build ipa --export-options-plist=ios/ExportOptions.plist --no-tree-shake-icons
+  #     - name: Build iOS IPA
+  #       run: flutter build ipa --export-options-plist=ios/ExportOptions.plist --no-tree-shake-icons
 
       # - name: Publish Android
       #   run: fastlane beta
