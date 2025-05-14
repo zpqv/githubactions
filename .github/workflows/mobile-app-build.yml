@@ -84,17 +84,16 @@ jobs:
       - name: Setup Android/iOS Secrets
         run: |
           echo "${{ secrets.IOS_API_KEY_JSON }}" | base64 --decode > ios/ios_api_key.json
-          echo "${{ secrets.ANDROID_KEYPROP }}" | base64 --decode > android/key.properties
-          echo "${{ secrets.ANDROID_JKS }}" | base64 --decode > android/key.jks
+          echo "${{ secrets.KEYPROP_PROPERTIES }}" | base64 --decode > android/key.properties
+          echo "${{ secrets.KEY_JKS }}" | base64 --decode > android/key.jks
           mkdir -p assets/config/android
           echo "${{ secrets.ANDROID_SERVICE_JSON }}" | base64 --decode > assets/config/android/api_key_info.json
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "${{ secrets.IOS_PROVISION_PROFILE }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+          
 
       - name: Import iOS Certificate
         uses: apple-actions/import-codesign-certs@v1
         with:
-          p12-file-base64: ${{ secrets.IOS_P12_BASE64 }}
+          p12-file-base64: ${{ secrets.KEY_P12 }}
           p12-password: ${{ secrets.IOS_CERT_PASSWORD }}
 
       - name: Flutter Pub Get
@@ -106,21 +105,21 @@ jobs:
       - name: Build iOS IPA
         run: flutter build ipa --export-options-plist=ios/ExportOptions.plist --no-tree-shake-icons
 
-      - name: Publish Android
-        run: fastlane beta
-        working-directory: android
+      # - name: Publish Android
+      #   run: fastlane beta
+      #   working-directory: android
 
-      - name: Publish iOS
-        run: fastlane beta
-        working-directory: ios
+      # - name: Publish iOS
+      #   run: fastlane beta
+      #   working-directory: ios
 
-      - name: Notify Upload Success
-        run: |
-          CONFIG_FILE="assets/config/config.json"
-          engineName=$(grep 'engineName' "$CONFIG_FILE" | awk -F': ' '{print $2}' | tr -d '",')
-          businessIdeaId=$(grep 'businessIdeaId' "$CONFIG_FILE" | awk -F': ' '{print $2}' | tr -d '",')
-          repoName=$(echo "${{ github.repository }}" | cut -d'/' -f2)
-          url="https://us-central1-$engineName.cloudfunctions.net/notifyOnAppUploadApi"
-          curl --location "$url" \
-            --header 'Content-Type: application/json' \
-            --data "{\"id\": \"$businessIdeaId\", \"repoName\": \"$repoName\", \"platform\": \"Both\"}"
+      # - name: Notify Upload Success
+      #   run: |
+      #     CONFIG_FILE="assets/config/config.json"
+      #     engineName=$(grep 'engineName' "$CONFIG_FILE" | awk -F': ' '{print $2}' | tr -d '",')
+      #     businessIdeaId=$(grep 'businessIdeaId' "$CONFIG_FILE" | awk -F': ' '{print $2}' | tr -d '",')
+      #     repoName=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+      #     url="https://us-central1-$engineName.cloudfunctions.net/notifyOnAppUploadApi"
+      #     curl --location "$url" \
+      #       --header 'Content-Type: application/json' \
+      #       --data "{\"id\": \"$businessIdeaId\", \"repoName\": \"$repoName\", \"platform\": \"Both\"}"
