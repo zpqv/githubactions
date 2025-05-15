@@ -118,6 +118,10 @@ jobs:
           mkdir -p project/assets/config/android
           echo "${{ secrets.ANDROID_SERVICE_JSON }}" | base64 --decode > project/assets/config/android/api_key_info.json
 
+      - name: Get Android App version from Playstore
+        run: fastlane version_update
+        working-directory: project/android
+
       - name: Build Android AAB
         run: flutter build appbundle --no-tree-shake-icons
         working-directory: project
