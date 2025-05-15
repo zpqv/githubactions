@@ -8,130 +8,130 @@ on:
         required: true
 
 jobs:
-  android:
-    runs-on: macos-13
-    env:
-      FLUTTER_HOME: ~/.flutter
+  # android:
+  #   runs-on: macos-13
+  #   env:
+  #     FLUTTER_HOME: ~/.flutter
 
-    steps:
-      - name: Check Secrets (safe debug)
-        run: |
-          echo "Git user is set: ${AZURE_GIT_USERNAME:+yes}"
-          echo "PAT is set: ${AZURE_PAT:+yes}"
-        env:
-          AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
-          AZURE_PAT: ${{ secrets.AZURE_PAT }}
+  #   steps:
+  #     - name: Check Secrets (safe debug)
+  #       run: |
+  #         echo "Git user is set: ${AZURE_GIT_USERNAME:+yes}"
+  #         echo "PAT is set: ${AZURE_PAT:+yes}"
+  #       env:
+  #         AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
+  #         AZURE_PAT: ${{ secrets.AZURE_PAT }}
 
-      - name: Checkout this GitHub repo
-        uses: actions/checkout@v4
+  #     - name: Checkout this GitHub repo
+  #       uses: actions/checkout@v4
 
-      - name: Clone Azure DevOps project
-        run: |
-          git config --global http.sslVerify false
-          git clone https://${AZURE_GIT_USERNAME}:${AZURE_PAT}@${{ github.event.inputs.project_url }} project
-        env:
-          AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
-          AZURE_PAT: ${{ secrets.AZURE_PAT }}
+  #     - name: Clone Azure DevOps project
+  #       run: |
+  #         git config --global http.sslVerify false
+  #         git clone https://${AZURE_GIT_USERNAME}:${AZURE_PAT}@${{ github.event.inputs.project_url }} project
+  #       env:
+  #         AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
+  #         AZURE_PAT: ${{ secrets.AZURE_PAT }}
 
-      - name: Cache Flutter SDK
-        id: flutter-cache
-        uses: actions/cache@v3
-        with:
-          path: ~/.flutter
-          key: ${{ runner.os }}-flutter-stable
-          restore-keys: |
-            ${{ runner.os }}-flutter-
+  #     - name: Cache Flutter SDK
+  #       id: flutter-cache
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: ~/.flutter
+  #         key: ${{ runner.os }}-flutter-stable
+  #         restore-keys: |
+  #           ${{ runner.os }}-flutter-
 
-      - name: Install Flutter if not cached
-        if: steps.flutter-cache.outputs.cache-hit != 'true'
-        run: |
-          git clone https://github.com/flutter/flutter.git -b stable ~/.flutter
+  #     - name: Install Flutter if not cached
+  #       if: steps.flutter-cache.outputs.cache-hit != 'true'
+  #       run: |
+  #         git clone https://github.com/flutter/flutter.git -b stable ~/.flutter
 
-      - name: Add Flutter to PATH
-        run: echo "$HOME/.flutter/bin" >> $GITHUB_PATH
+  #     - name: Add Flutter to PATH
+  #       run: echo "$HOME/.flutter/bin" >> $GITHUB_PATH
 
-      - name: Cache Pub Packages
-        id: pub-cache
-        uses: actions/cache@v3
-        with:
-          path: ~/.pub-cache
-          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pub-
+  #     - name: Cache Pub Packages
+  #       id: pub-cache
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: ~/.pub-cache
+  #         key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-pub-
 
-      - name: Install Pub Packages
-        run: flutter pub get
-        working-directory: project
+  #     - name: Install Pub Packages
+  #       run: flutter pub get
+  #       working-directory: project
 
-      - name: Cache Homebrew
-        id: brew-cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/Library/Caches/Homebrew
-            ~/.brew-cache
-          key: ${{ runner.os }}-brew-cache
+  #     - name: Cache Homebrew
+  #       id: brew-cache
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: |
+  #           ~/Library/Caches/Homebrew
+  #           ~/.brew-cache
+  #         key: ${{ runner.os }}-brew-cache
 
-      - name: Install Homebrew and Fastlane if not cached
-        if: steps.brew-cache.outputs.cache-hit != 'true'
-        run: |
-          export HOMEBREW_CACHE="$HOME/.brew-cache"
-          mkdir -p $HOMEBREW_CACHE
-          brew install fastlane
+  #     - name: Install Homebrew and Fastlane if not cached
+  #       if: steps.brew-cache.outputs.cache-hit != 'true'
+  #       run: |
+  #         export HOMEBREW_CACHE="$HOME/.brew-cache"
+  #         mkdir -p $HOMEBREW_CACHE
+  #         brew install fastlane
 
-      - name: Cache Ruby Gems
-        id: gems-cache
-        uses: actions/cache@v3
-        with:
-          path: vendor/bundle
-          key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-gems-
+  #     - name: Cache Ruby Gems
+  #       id: gems-cache
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: vendor/bundle
+  #         key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-gems-
 
-      - name: Install Bundler and Fastlane (Ruby) if not cached
-        if: steps.gems-cache.outputs.cache-hit != 'true'
-        run: |
-          gem install bundler
-          bundle config path vendor/bundle
-          bundle install || true
+  #     - name: Install Bundler and Fastlane (Ruby) if not cached
+  #       if: steps.gems-cache.outputs.cache-hit != 'true'
+  #       run: |
+  #         gem install bundler
+  #         bundle config path vendor/bundle
+  #         bundle install || true
 
-      - name: Setup Java 17 + Gradle cache
-        uses: actions/setup-java@v4
-        with:
-          java-version: 17
-          distribution: temurin
-          cache: gradle
+  #     - name: Setup Java 17 + Gradle cache
+  #       uses: actions/setup-java@v4
+  #       with:
+  #         java-version: 17
+  #         distribution: temurin
+  #         cache: gradle
 
-      - name: Cache Android SDK NDK tools
-        uses: actions/cache@v3
-        with:
-          path: |
-            /Users/runner/Library/Android/sdk/ndk
-          key: ${{ runner.os }}-ndk-cache
-          restore-keys: |
-            ${{ runner.os }}-ndk-
+  #     - name: Cache Android SDK NDK tools
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: |
+  #           /Users/runner/Library/Android/sdk/ndk
+  #         key: ${{ runner.os }}-ndk-cache
+  #         restore-keys: |
+  #           ${{ runner.os }}-ndk-
 
-      - name: Setup Android/iOS Secrets
-        run: |
-          echo "${{ secrets.KEYPROP_PROPERTIES }}" | base64 --decode > project/android/key.properties
-          echo "${{ secrets.KEY_JKS }}" | base64 --decode > project/android/key.jks
-          mkdir -p project/assets/config/android
-          echo "${{ secrets.ANDROID_SERVICE_JSON }}" | base64 --decode > project/assets/config/android/api_key_info.json
+  #     - name: Setup Android/iOS Secrets
+  #       run: |
+  #         echo "${{ secrets.KEYPROP_PROPERTIES }}" | base64 --decode > project/android/key.properties
+  #         echo "${{ secrets.KEY_JKS }}" | base64 --decode > project/android/key.jks
+  #         mkdir -p project/assets/config/android
+  #         echo "${{ secrets.ANDROID_SERVICE_JSON }}" | base64 --decode > project/assets/config/android/api_key_info.json
 
-      - name: Get Android App version from Playstore
-        run: fastlane version_update
-        working-directory: project/android
+  #     - name: Get Android App version from Playstore
+  #       run: fastlane version_update
+  #       working-directory: project/android
 
-      - name: Build Android AAB
-        run: flutter build appbundle --no-tree-shake-icons
-        working-directory: project
+  #     - name: Build Android AAB
+  #       run: flutter build appbundle --no-tree-shake-icons
+  #       working-directory: project
       
-      - name: Publish Android
-        run: fastlane beta
-        working-directory: project/android
+  #     - name: Publish Android
+  #       run: fastlane beta
+  #       working-directory: project/android
       
   ios:
-    runs-on: macos-13
+    runs-on: macos-15
     env:
       FLUTTER_HOME: ~/.flutter
 
