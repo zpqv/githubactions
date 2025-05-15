@@ -8,13 +8,10 @@ on:
         required: true
 
 jobs:
-  setup:
+  build:
     runs-on: macos-13
     env:
       FLUTTER_HOME: ~/.flutter
-
-    outputs:
-      project-dir: ${{ steps.clone.outputs.project-dir }}
 
     steps:
       - name: Check Secrets (safe debug)
@@ -29,11 +26,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Clone Azure DevOps project
-        id: clone
         run: |
           git config --global http.sslVerify false
           git clone https://${AZURE_GIT_USERNAME}:${AZURE_PAT}@${{ github.event.inputs.project_url }} project
-          echo "project-dir=project" >> $GITHUB_OUTPUT
         env:
           AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
           AZURE_PAT: ${{ secrets.AZURE_PAT }}
@@ -49,8 +44,7 @@ jobs:
 
       - name: Install Flutter if not cached
         if: steps.flutter-cache.outputs.cache-hit != 'true'
-        run: |
-          git clone https://github.com/flutter/flutter.git -b stable ~/.flutter
+        run: git clone https://github.com/flutter/flutter.git -b stable ~/.flutter
 
       - name: Add Flutter to PATH
         run: echo "$HOME/.flutter/bin" >> $GITHUB_PATH
@@ -115,39 +109,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-ndk-
 
-  android:
-    needs: setup
-    runs-on: macos-13
-    steps:
-      - name: Checkout this GitHub repo
-        uses: actions/checkout@v4
-
-      - name: Setup Android Secrets
+      - name: Setup Android and iOS Secrets
         run: |
           echo "${{ secrets.KEYPROP_PROPERTIES }}" | base64 --decode > project/android/key.properties
           echo "${{ secrets.KEY_JKS }}" | base64 --decode > project/android/key.jks
-          mkdir -p project/assets/config/android
           echo "${{ secrets.ANDROID_SERVICE_JSON }}" | base64 --decode > project/assets/config/android/api_key_info.json
 
-      - name: Get Android App version from Playstore
-        run: fastlane version_update
-        working-directory: project/android
-
-      - name: Build Android AAB
-        run: flutter build appbundle --no-tree-shake-icons
-        working-directory: project
-
-  ios:
-    needs: setup
-    runs-on: macos-13
-    steps:
-      - name: Checkout this GitHub repo
-        uses: actions/checkout@v4
-
-      - name: Setup iOS Secrets
-        run: |
           echo "${{ secrets.IOS_API_KEY_JSON }}" | base64 --decode > project/ios/ios_api_key.json
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           echo "${{ secrets.IOS_PROVISION_PROFILE }}" | base64 --decode > project/ios/profile.mobileprovision
           echo "${{ secrets.IOS_PROVISION_PROFILE }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/${{ secrets.IOS_PROVISION_PROFILE_NAME }}.mobileprovision
 
@@ -160,22 +128,31 @@ jobs:
           p12-file-base64: ${{ secrets.KEY_P12 }}
           p12-password: ${{ secrets.IOS_CERT_PASSWORD }}
 
-      - name: Get iOS App version from App Store
-        run: fastlane version_update --verbose
-        working-directory: project/ios
+      - name: Run Android and iOS builds in parallel
+        run: |
+          echo "Starting Android and iOS builds in parallel..."
 
-      - name: Configuring Xcode project
-        run: fastlane configXcode --verbose
-        working-directory: project/ios
+          (
+            echo "=== Android Build Start ==="
+            cd project/android
+            fastlane version_update
+            cd ../
+            flutter build appbundle --no-tree-shake-icons
+            echo "=== Android Build Done ==="
+          ) &
 
-      - name: Reading ExportOptions
-        run: cat ExportOptions.plist
-        working-directory: project/ios
+          (
+            echo "=== iOS Build Start ==="
+            cd project/ios
+            fastlane version_update --verbose
+            fastlane configXcode --verbose
+            cat ExportOptions.plist
+            cd ../
+            flutter build ipa --export-options-plist=ios/ExportOptions.plist --no-tree-shake-icons
+            echo "=== iOS Build Done ==="
+          ) &
 
-      - name: Build iOS IPA
-        run: flutter build ipa --export-options-plist=ios/ExportOptions.plist --no-tree-shake-icons
-        working-directory: project
-
+          wait
 
       # - name: Publish Android
       #   run: fastlane beta
