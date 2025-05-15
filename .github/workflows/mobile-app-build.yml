@@ -8,7 +8,149 @@ on:
         required: true
 
 jobs:
-  
+  android:
+    runs-on: macos-15
+    env:
+      FLUTTER_HOME: ~/.flutter
+
+    steps:
+      - name: Check Secrets (safe debug)
+        run: |
+          echo "Git user is set: ${AZURE_GIT_USERNAME:+yes}"
+          echo "PAT is set: ${AZURE_PAT:+yes}"
+        env:
+          AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
+          AZURE_PAT: ${{ secrets.AZURE_PAT }}
+
+      - name: Checkout this GitHub repo
+        uses: actions/checkout@v4
+
+      - name: Clone Azure DevOps project
+        run: |
+          git config --global http.sslVerify false
+          git clone --branch dev https://${AZURE_GIT_USERNAME}:${AZURE_PAT}@${{ github.event.inputs.project_url }} project
+        env:
+          AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
+          AZURE_PAT: ${{ secrets.AZURE_PAT }}
+
+      - name: Cache Flutter SDK
+        id: flutter-cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.flutter
+          key: ${{ runner.os }}-flutter-stable
+          restore-keys: |
+            ${{ runner.os }}-flutter-
+
+      - name: Install Flutter if not cached
+        if: steps.flutter-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/flutter/flutter.git -b stable ~/.flutter
+
+      - name: Add Flutter to PATH
+        run: echo "$HOME/.flutter/bin" >> $GITHUB_PATH
+
+      - name: Cache Pub Packages
+        id: pub-cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
+      - name: Install Pub Packages
+        run: flutter pub get
+        working-directory: project
+
+      - name: Cache Homebrew
+        id: brew-cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            ~/.brew-cache
+          key: ${{ runner.os }}-brew-cache
+
+      - name: Install Homebrew and Fastlane if not cached
+        if: steps.brew-cache.outputs.cache-hit != 'true'
+        run: |
+          export HOMEBREW_CACHE="$HOME/.brew-cache"
+          mkdir -p $HOMEBREW_CACHE
+          brew install fastlane
+
+      - name: Cache Ruby Gems
+        id: gems-cache
+        uses: actions/cache@v3
+        with:
+          path: vendor/bundle
+          key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gems-
+
+      - name: Install Bundler and Fastlane (Ruby) if not cached
+        if: steps.gems-cache.outputs.cache-hit != 'true'
+        run: |
+          gem install bundler
+          bundle config path vendor/bundle
+          bundle install || true
+
+      - name: Setup Java 17 + Gradle cache
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+          cache: gradle
+
+      - name: Cache Android SDK NDK tools
+        uses: actions/cache@v3
+        with:
+          path: |
+            /Users/runner/Library/Android/sdk/ndk
+          key: ${{ runner.os }}-ndk-cache
+          restore-keys: |
+            ${{ runner.os }}-ndk-
+
+      - name: Setup Android/iOS Secrets
+        run: |
+          echo "${{ secrets.KEYPROP_PROPERTIES }}" | base64 --decode > project/android/key.properties
+          echo "${{ secrets.KEY_JKS }}" | base64 --decode > project/android/key.jks
+          mkdir -p project/assets/config/android
+          echo "${{ secrets.ANDROID_SERVICE_JSON }}" | base64 --decode > project/assets/config/android/api_key_info.json
+
+      - name: Get Android App version from Playstore
+        run: fastlane version_update
+        working-directory: project/android
+
+      - name: Build Android AAB
+        run: flutter build appbundle --no-tree-shake-icons
+        working-directory: project
+      
+      - name: Publish Android
+        run: fastlane beta
+        working-directory: project/android
+      
+      - name: Notify after app uploaded to App Store (Android)
+        run: |
+          CONFIG_FILE="project/assets/config/config.json"
+
+          engineName=$(grep 'engineName' "$CONFIG_FILE" | awk -F': ' '{print $2}' | tr -d '",')
+          echo "Azure project created by: $engineName"
+
+          businessIdeaId=$(grep 'businessIdeaId' "$CONFIG_FILE" | awk -F': ' '{print $2}' | tr -d '",')
+          echo "Azure project business idea id: $businessIdeaId"
+
+          repoName=$(echo "${GITHUB_REPOSITORY}" | cut -d'/' -f2 | cut -d'-' -f1)
+          echo "Azure repo name: $repoName"
+
+          url="https://us-central1-$engineName.cloudfunctions.net/notifyOnAppUploadApi"
+          echo "Url: $url"
+
+          curl --location "$url" \
+            --header 'Content-Type: application/json' \
+            --data "{\"id\": \"$businessIdeaId\", \"repoName\": \"$repoName\", \"platform\": \"Android\"}"
+
+      
   ios:
     runs-on: macos-15
     env:
@@ -135,42 +277,42 @@ jobs:
         run: flutter build ipa --export-options-plist=ios/ExportOptions.plist --no-tree-shake-icons
         working-directory: project
       
-      # - name: Copy iOS generated IPA to ios directory and select latest Xcode
-      #   run: |
-      #     cp project/build/ios/ipa/*.ipa project/ios/Runner.ipa
-      #     cd project/ios
+      - name: Copy iOS generated IPA to ios directory and select latest Xcode
+        run: |
+          cp project/build/ios/ipa/*.ipa project/ios/Runner.ipa
+          cd project/ios
 
-      #     echo "Finding the latest Xcode version..."
-      #     latest_xcode=$(ls /Applications | grep 'Xcode' | sort -Vr | head -n 1)
+          echo "Finding the latest Xcode version..."
+          latest_xcode=$(ls /Applications | grep 'Xcode' | sort -Vr | head -n 1)
 
-      #     echo "Latest Xcode version is: $latest_xcode"
+          echo "Latest Xcode version is: $latest_xcode"
 
-      #     echo "Selecting the latest Xcode version..."
-      #     sudo xcode-select -s "/Applications/$latest_xcode"
+          echo "Selecting the latest Xcode version..."
+          sudo xcode-select -s "/Applications/$latest_xcode"
 
-      #     echo "Checking Xcode version..."
-      #     xcodebuild -version
+          echo "Checking Xcode version..."
+          xcodebuild -version
 
-      # - name: Publish iOS
-      #   run: fastlane beta
-      #   working-directory: project/ios
+      - name: Publish iOS
+        run: fastlane beta
+        working-directory: project/ios
       
-      # - name: Notify after app uploaded to App Store (iOS)
-      #   run: |
-      #     CONFIG_FILE="project/assets/config/config.json"
+      - name: Notify after app uploaded to App Store (iOS)
+        run: |
+          CONFIG_FILE="project/assets/config/config.json"
 
-      #     engineName=$(grep 'engineName' "$CONFIG_FILE" | awk -F': ' '{print $2}' | tr -d '",')
-      #     echo "Azure project created by: $engineName"
+          engineName=$(grep 'engineName' "$CONFIG_FILE" | awk -F': ' '{print $2}' | tr -d '",')
+          echo "Azure project created by: $engineName"
 
-      #     businessIdeaId=$(grep 'businessIdeaId' "$CONFIG_FILE" | awk -F': ' '{print $2}' | tr -d '",')
-      #     echo "Azure project business idea id: $businessIdeaId"
+          businessIdeaId=$(grep 'businessIdeaId' "$CONFIG_FILE" | awk -F': ' '{print $2}' | tr -d '",')
+          echo "Azure project business idea id: $businessIdeaId"
 
-      #     repoName=$(echo "${GITHUB_REPOSITORY}" | cut -d'/' -f2 | cut -d'-' -f1)
-      #     echo "Azure repo name: $repoName"
+          repoName=$(echo "${GITHUB_REPOSITORY}" | cut -d'/' -f2 | cut -d'-' -f1)
+          echo "Azure repo name: $repoName"
 
-      #     url="https://us-central1-$engineName.cloudfunctions.net/notifyOnAppUploadApi"
-      #     echo "Url: $url"
+          url="https://us-central1-$engineName.cloudfunctions.net/notifyOnAppUploadApi"
+          echo "Url: $url"
 
-      #     curl --location "$url" \
-      #       --header 'Content-Type: application/json' \
-      #       --data "{\"id\": \"$businessIdeaId\", \"repoName\": \"$repoName\", \"platform\": \"iOS\"}"
+          curl --location "$url" \
+            --header 'Content-Type: application/json' \
+            --data "{\"id\": \"$businessIdeaId\", \"repoName\": \"$repoName\", \"platform\": \"iOS\"}"
