@@ -29,7 +29,7 @@ jobs:
       - name: Clone Azure DevOps project
         run: |
           git config --global http.sslVerify false
-          git clone --branch master https://${AZURE_GIT_USERNAME}:${AZURE_PAT}@${{ github.event.inputs.project_url }} project
+          git clone --branch dev https://${AZURE_GIT_USERNAME}:${AZURE_PAT}@${{ github.event.inputs.project_url }} project
         env:
           AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
           AZURE_PAT: ${{ secrets.AZURE_PAT }}
