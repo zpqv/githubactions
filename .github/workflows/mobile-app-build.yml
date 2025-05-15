@@ -45,7 +45,11 @@ jobs:
       - name: Install Flutter if not cached
         if: steps.flutter-cache.outputs.cache-hit != 'true'
         run: |
-          git clone https://github.com/flutter/flutter.git -b stable ~/.flutter
+          if [ ! -d "$HOME/.flutter" ] || [ -z "$(ls -A $HOME/.flutter)" ]; then
+            git clone https://github.com/flutter/flutter.git -b stable ~/.flutter
+          else
+            echo "Flutter directory already exists and is not empty, skipping clone."
+          fi
 
       - name: Add Flutter to PATH
         run: echo "$HOME/.flutter/bin" >> $GITHUB_PATH
