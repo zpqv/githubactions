@@ -8,11 +8,12 @@ on:
         required: true
 
 jobs:
-  build:
+  setup:
     runs-on: macos-13
+    outputs:
+      project-dir: project
     env:
       FLUTTER_HOME: ~/.flutter
-
     steps:
       - name: Check Secrets (safe debug)
         run: |
@@ -34,7 +35,6 @@ jobs:
           AZURE_PAT: ${{ secrets.AZURE_PAT }}
 
       - name: Cache Flutter SDK
-        id: flutter-cache
         uses: actions/cache@v3
         with:
           path: ~/.flutter
@@ -43,15 +43,12 @@ jobs:
             ${{ runner.os }}-flutter-
 
       - name: Install Flutter if not cached
-        if: steps.flutter-cache.outputs.cache-hit != 'true'
-        run: |
-          git clone https://github.com/flutter/flutter.git -b stable ~/.flutter
+        run: git clone https://github.com/flutter/flutter.git -b stable ~/.flutter
 
       - name: Add Flutter to PATH
         run: echo "$HOME/.flutter/bin" >> $GITHUB_PATH
 
       - name: Cache Pub Packages
-        id: pub-cache
         uses: actions/cache@v3
         with:
           path: ~/.pub-cache
@@ -64,7 +61,6 @@ jobs:
         working-directory: project
 
       - name: Cache Homebrew
-        id: brew-cache
         uses: actions/cache@v3
         with:
           path: |
@@ -73,14 +69,12 @@ jobs:
           key: ${{ runner.os }}-brew-cache
 
       - name: Install Homebrew and Fastlane if not cached
-        if: steps.brew-cache.outputs.cache-hit != 'true'
         run: |
           export HOMEBREW_CACHE="$HOME/.brew-cache"
           mkdir -p $HOMEBREW_CACHE
           brew install fastlane
 
       - name: Cache Ruby Gems
-        id: gems-cache
         uses: actions/cache@v3
         with:
           path: vendor/bundle
@@ -89,7 +83,6 @@ jobs:
             ${{ runner.os }}-gems-
 
       - name: Install Bundler and Fastlane (Ruby) if not cached
-        if: steps.gems-cache.outputs.cache-hit != 'true'
         run: |
           gem install bundler
           bundle config path vendor/bundle
@@ -105,30 +98,45 @@ jobs:
       - name: Cache Android SDK NDK tools
         uses: actions/cache@v3
         with:
-          path: |
-            /Users/runner/Library/Android/sdk/ndk
+          path: /Users/runner/Library/Android/sdk/ndk
           key: ${{ runner.os }}-ndk-cache
           restore-keys: |
             ${{ runner.os }}-ndk-
 
-      - name: Setup Android/iOS Secrets
+  android:
+    needs: setup
+    runs-on: macos-13
+    steps:
+      - name: Checkout this GitHub repo
+        uses: actions/checkout@v4
+
+      - name: Setup Android Secrets
         run: |
-          echo "${{ secrets.IOS_API_KEY_JSON }}" | base64 --decode > project/ios/ios_api_key.json
           echo "${{ secrets.KEYPROP_PROPERTIES }}" | base64 --decode > project/android/key.properties
           echo "${{ secrets.KEY_JKS }}" | base64 --decode > project/android/key.jks
           mkdir -p project/assets/config/android
           echo "${{ secrets.ANDROID_SERVICE_JSON }}" | base64 --decode > project/assets/config/android/api_key_info.json
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "${{ secrets.IOS_PROVISION_PROFILE }}" | base64 --decode > project/ios//profile.mobileprovision
 
-      - name: Install Apple Provisioning Profile
+      - name: Get Android App version from Playstore
+        run: fastlane version_update
+        working-directory: project/android
+
+      - name: Build Android AAB
+        run: flutter build appbundle --no-tree-shake-icons
+        working-directory: project
+
+  ios:
+    needs: setup
+    runs-on: macos-13
+    steps:
+      - name: Checkout this GitHub repo
+        uses: actions/checkout@v4
+
+      - name: Setup iOS Secrets
         run: |
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "${{ secrets.IOS_API_KEY_JSON }}" | base64 --decode > project/ios/ios_api_key.json
           echo "${{ secrets.IOS_PROVISION_PROFILE }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/${{ secrets.IOS_PROVISION_PROFILE_NAME }}.mobileprovision
-     
-      - name: Debug Provisioning Profile
-        run: ls -la ~/Library/MobileDevice/Provisioning\ Profiles && file ~/Library/MobileDevice/Provisioning\ Profiles/*
-      
+
       - name: Import iOS Certificate
         uses: apple-actions/import-codesign-certs@v1
         with:
@@ -147,14 +155,9 @@ jobs:
         run: cat ExportOptions.plist
         working-directory: project/ios
 
-      - name: Build Android AAB
-        run: flutter build appbundle --no-tree-shake-icons
-        working-directory: project
-
       - name: Build iOS IPA
         run: flutter build ipa --export-options-plist=ios/ExportOptions.plist --no-tree-shake-icons
         working-directory: project
-
 
 
       # - name: Publish Android
