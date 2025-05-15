@@ -43,7 +43,9 @@ jobs:
             ${{ runner.os }}-flutter-
 
       - name: Install Flutter if not cached
-        run: git clone https://github.com/flutter/flutter.git -b stable ~/.flutter
+        if: steps.flutter-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/flutter/flutter.git -b stable ~/.flutter
 
       - name: Add Flutter to PATH
         run: echo "$HOME/.flutter/bin" >> $GITHUB_PATH
