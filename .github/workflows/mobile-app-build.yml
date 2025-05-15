@@ -32,6 +32,9 @@ jobs:
         env:
           AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
           AZURE_PAT: ${{ secrets.AZURE_PAT }}
+          
+      - name: Show cloned branch
+        run: git -C project rev-parse --abbrev-ref HEAD
 
   #     - name: Cache Flutter SDK
   #       id: flutter-cache
