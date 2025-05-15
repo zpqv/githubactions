@@ -122,6 +122,10 @@ jobs:
         run: flutter build appbundle --no-tree-shake-icons
         working-directory: project
       
+      - name: Publish Android
+        run: fastlane beta
+        working-directory: project/android
+      
   ios:
     runs-on: macos-13
     env:
@@ -245,3 +249,23 @@ jobs:
       - name: Build iOS IPA
         run: flutter build ipa --export-options-plist=ios/ExportOptions.plist --no-tree-shake-icons
         working-directory: project
+      
+      - name: Copy iOS generated IPA to ios directory and select latest Xcode
+        run: |
+          cp project/build/ios/ipa/*.ipa project/ios/Runner.ipa
+          cd project/ios
+
+          echo "Finding the latest Xcode version..."
+          latest_xcode=$(ls /Applications | grep 'Xcode' | sort -Vr | head -n 1)
+
+          echo "Latest Xcode version is: $latest_xcode"
+
+          echo "Selecting the latest Xcode version..."
+          sudo xcode-select -s "/Applications/$latest_xcode"
+
+          echo "Checking Xcode version..."
+          xcodebuild -version
+
+      - name: Publish iOS
+        run: fastlane beta
+        working-directory: project/ios
