@@ -73,7 +73,15 @@ jobs:
 
       # ------------------------ Upload to Artifact ------------------------
       - name: Upload artifact log file
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: mobile-preview-log
           path: /tmp/workspaces/artifact_logs.log
+
+      # ------------------------ Notify incase of failure ------------------------
+      - name: Notify failure via curl
+        if: ${{ failure() }}
+        run: |
+         echo "Job failed"
+         #Later replace with curl command
