@@ -33,6 +33,7 @@ def main():
     web_deploy_file_name = "web_deploy.txt"
     web_deploy_project_id = "preview-stack"
     request_id = os.getenv("REQUEST_ID", str(uuid.uuid4()))
+    hosting_domain = os.getenv("HOSTING_DOMAIN")
     try:
         azure_project_name = os.getenv("AZURE_PROJECT_NAME")
         azure_repo_names = json.loads(os.getenv("AZURE_REPO_NAMES", "[]"))
@@ -42,7 +43,7 @@ def main():
         if not all([azure_project_name, azure_pat, azure_repo_names and isinstance(azure_repo_names, list) and len(azure_repo_names) > 0]):
             raise ValueError("AZURE_PROJECT_NAME, AZURE_REPO_NAMES (as JSON array), AZURE_PAT are required for mobilePreviewDeploy")
 
-        site_id = extract_prefix(request_id)
+        site_id = hosting_domain
         log_message(request_id, f"Using Site ID / Target Name: {site_id}")
 
         unique_id = str(uuid.uuid4())
@@ -108,26 +109,6 @@ def create_artifact_log_file(file_path, request_id):
     dest_path = os.path.join(work_dir, "artifact_logs.log")
     shutil.copy(file_path, dest_path)
     log_message(request_id, f"Artifact log file created: {dest_path}")
-    
-def extract_prefix(input_str):
-    # Split the input string at the underscore
-    parts = input_str.split('_')
-    prefix = parts[0] if parts else input_str
-
-    # Define a regex pattern to match UUIDs
-    uuid_pattern = re.compile(
-        r'^([0-9a-fA-F]{8})-([0-9a-fA-F]{4})-'
-        r'([0-9a-fA-F]{4})-([0-9a-fA-F]{4})-'
-        r'([0-9a-fA-F]{12})$'
-    )
-
-    match = uuid_pattern.match(prefix)
-    if match:
-        # Concatenate the first and second groups to form the site_id
-        return match.group(1) + match.group(2) + match.group(3) + match.group(4)
-    else:
-        # For non-UUID formats, return the entire prefix
-        return prefix
 
 def setup_service_account(request_id, work_dir, azure_pat):
     log_message(request_id, "[setup_service_account] Setting up service account...")
