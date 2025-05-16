@@ -3,16 +3,16 @@ name: Mobile Preview Deploy
 on:
   workflow_dispatch:
     inputs:
-      REQUEST_ID:
+      requestId:
         description: 'Request ID'
         required: true
-      AZURE_PROJECT_NAME:
+      azureProjectName:
         description: 'Azure DevOps project name'
         required: true
-      AZURE_REPO_NAMES:
+      azureRepoNames:
         description: 'Comma-separated list of Azure repo names'
         required: true
-      GCS_BUCKET_NAME:
+      gcsBucketName:
         description: 'Google Cloud Storage bucket name'
         required: true
 
@@ -20,11 +20,11 @@ jobs:
   mobile-preview-deploy:
     runs-on: macos-15
     env:
-      REQUEST_ID: ${{ github.event.inputs.REQUEST_ID }}
-      AZURE_PROJECT_NAME: ${{ github.event.inputs.AZURE_PROJECT_NAME }}
-      AZURE_REPO_NAMES: ${{ github.event.inputs.AZURE_REPO_NAMES }}
+      REQUEST_ID: ${{ github.event.inputs.requestId }}
+      AZURE_PROJECT_NAME: ${{ github.event.inputs.azureProjectName }}
+      AZURE_REPO_NAMES: ${{ github.event.inputs.azureRepoNames }}
       AZURE_PAT: ${{ secrets.AZURE_PAT }}
-      GCS_BUCKET_NAME: ${{ github.event.inputs.GCS_BUCKET_NAME }}
+      GCS_BUCKET_NAME: ${{ github.event.inputs.gcsBucketName }}
       OPERATION: mobilePreviewDeploy
 
     steps:
@@ -70,3 +70,10 @@ jobs:
       # ------------------------ Run Python Script ------------------------
       - name: Execute mobilePreviewDeploy
         run: python flutter_operations.py
+
+      # ------------------------ Upload to Artifact ------------------------
+      - name: Upload artifact log file
+        uses: actions/upload-artifact@v3
+        with:
+          name: mobile-preview-log
+          path: /tmp/workspaces/artifact_logs.log
