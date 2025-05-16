@@ -26,7 +26,6 @@ jobs:
       AZURE_PAT: ${{ secrets.AZURE_PAT }}
       GCS_BUCKET_NAME: ${{ github.event.inputs.GCS_BUCKET_NAME }}
       OPERATION: mobilePreviewDeploy
-      FLUTTER_HOME: ~/.flutter
 
     steps:
       # ------------------------ Git ------------------------
@@ -44,48 +43,16 @@ jobs:
           pip install -r requirement.txt
 
       # ------------------------ Flutter ------------------------
-      - name: Create Flutter Version File
-        run: echo "3.29.2" > flutter_version.txt
-
-
-      - name: Cache Flutter SDK
-        id: flutter-cache
-        uses: actions/cache@v3
+      - name: Set up Flutter 3.29.2
+        uses: subosito/flutter-action@v2
         with:
-          path: ~/.flutter
-          key: ${{ runner.os }}-flutter-${{ hashFiles('flutter_version.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-flutter-
+          flutter-version: '3.29.2'
+          channel: 'stable'
 
-      - name: Install Flutter if not cached
-        if: steps.flutter-cache.outputs.cache-hit != 'true'
-        run: |
-          git clone https://github.com/flutter/flutter.git -b 3.29.2 ~/.flutter
-
-      - name: Add Flutter to PATH
-        run: echo "$HOME/.flutter/bin" >> $GITHUB_PATH
-
-      - name: Cache Pub Packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.pub-cache
-          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pub-
-
-      - name: Install Pub Packages
+      - name: Install Flutter Dependencies
         run: flutter pub get
-        
 
       # ------------------------ Firebase CLI ------------------------
-      - name: Cache Firebase CLI
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/firebase
-          key: ${{ runner.os }}-firebase-cli
-          restore-keys: |
-            ${{ runner.os }}-firebase-cli
-
       - name: Install Firebase CLI via npm
         run: |
           if ! command -v firebase &> /dev/null; then
