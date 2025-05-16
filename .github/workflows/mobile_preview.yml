@@ -61,6 +61,11 @@ jobs:
           else
             echo "Firebase CLI already installed"
           fi
+          
+      - name: Install Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          version: 'latest'
 
       # ------------------------ Run Python Script ------------------------
       - name: Execute mobilePreviewDeploy
