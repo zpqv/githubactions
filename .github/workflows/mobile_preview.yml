@@ -40,7 +40,7 @@ jobs:
 
       - name: Install Python Dependencies
         run: |
-          pip install -r /home/runner/work/githubactions/githubactions/requirements.txt
+          pip install -r requirement.txt
 
       # ------------------------ Flutter ------------------------
       - name: Set up Flutter 3.29.2
