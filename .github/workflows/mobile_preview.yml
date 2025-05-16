@@ -28,6 +28,7 @@ jobs:
       OPERATION: mobilePreviewDeploy
 
     steps:
+      # ------------------------ Git ------------------------
       - name: Checkout Repository
         uses: actions/checkout@v3
 
@@ -36,12 +37,10 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.12.0'
-          cache: pip
-          cache-dependency-path: requirements.txt
 
       - name: Install Python Dependencies
         run: |
-          pip install -r requirements.txt
+          pip install -r functions/src/docker/flutter-operations/requirements.txt
 
       # ------------------------ Flutter ------------------------
       - name: Set up Flutter 3.29.2
