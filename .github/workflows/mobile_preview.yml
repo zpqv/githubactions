@@ -73,7 +73,7 @@ jobs:
 
       # ------------------------ Upload to Artifact ------------------------
       - name: Upload artifact log file
-        uses: actions/upload-artifact@v3.1.3
+        uses: actions/upload-artifact@v4
         with:
           name: mobile-preview-log
           path: /tmp/workspaces/artifact_logs.log
