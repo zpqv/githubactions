@@ -233,6 +233,7 @@ jobs:
           bundle install || true
 
       - name: Cache CocoaPods
+        id: cocoapods-cache   # <- this ID is used in the conditional check
         uses: actions/cache@v3
         with:
           path: |
@@ -247,7 +248,8 @@ jobs:
       - name: Precache Flutter iOS artifacts
         run: flutter precache --ios
 
-      - name: Install CocoaPods
+      - name: Install CocoaPods if not cached
+        if: steps.cocoapods-cache.outputs.cache-hit != 'true'
         run: |
           cd project/ios
           pod install
