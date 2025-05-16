@@ -1,0 +1,98 @@
+name: Mobile Preview Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      REQUEST_ID:
+        description: 'Request ID'
+        required: true
+      AZURE_PROJECT_NAME:
+        description: 'Azure DevOps project name'
+        required: true
+      AZURE_REPO_NAMES:
+        description: 'Comma-separated list of Azure repo names'
+        required: true
+      GCS_BUCKET_NAME:
+        description: 'Google Cloud Storage bucket name'
+        required: true
+
+jobs:
+  mobile-preview-deploy:
+    runs-on: ubuntu-latest
+    env:
+      REQUEST_ID: ${{ github.event.inputs.REQUEST_ID }}
+      AZURE_PROJECT_NAME: ${{ github.event.inputs.AZURE_PROJECT_NAME }}
+      AZURE_REPO_NAMES: ${{ github.event.inputs.AZURE_REPO_NAMES }}
+      AZURE_PAT: ${{ secrets.AZURE_PAT }}
+      GCS_BUCKET_NAME: ${{ github.event.inputs.GCS_BUCKET_NAME }}
+      OPERATION: mobilePreviewDeploy
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # ------------------------ Python ------------------------
+
+      - name: Set up Python 3.13.3
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13.3'
+          cache: 'pip'
+
+      - name: Cache Python Dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Python Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      # ------------------------ Flutter ------------------------
+
+      - name: Set up Flutter 3.29.2
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.2'
+          channel: 'stable'
+          cache: true
+
+      - name: Cache Flutter SDK
+        uses: actions/cache@v3
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-flutter-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-
+
+      - name: Install Flutter Dependencies
+        run: flutter pub get
+
+      # ------------------------ Firebase CLI ------------------------
+
+      - name: Cache Firebase CLI
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/firebase
+          key: ${{ runner.os }}-firebase-cli
+          restore-keys: |
+            ${{ runner.os }}-firebase-cli
+
+      - name: Install Firebase CLI
+        run: |
+          if ! command -v firebase &> /dev/null; then
+            curl -sL https://firebase.tools | bash
+          else
+            echo "Firebase CLI already installed"
+          fi
+
+      # ------------------------ Script Execution ------------------------
+
+      # - name: Execute mobilePreviewDeploy
+      #   run: python functions/src/docker/flutter-operations/flutter_operations.py
