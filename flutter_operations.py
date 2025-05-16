@@ -32,9 +32,8 @@ def main():
     global_log_buffer = []
     web_deploy_file_name = "web_deploy.txt"
     web_deploy_project_id = "preview-stack"
-    
+    request_id = os.getenv("REQUEST_ID", str(uuid.uuid4()))
     try:
-        request_id = os.getenv("REQUEST_ID", str(uuid.uuid4()))
         azure_project_name = os.getenv("AZURE_PROJECT_NAME")
         azure_repo_names = json.loads(os.getenv("AZURE_REPO_NAMES", "[]"))
         azure_pat = os.getenv("AZURE_PAT")
@@ -42,13 +41,13 @@ def main():
 
         if not all([azure_project_name, azure_pat, azure_repo_names and isinstance(azure_repo_names, list) and len(azure_repo_names) > 0]):
             raise ValueError("AZURE_PROJECT_NAME, AZURE_REPO_NAMES (as JSON array), AZURE_PAT are required for mobilePreviewDeploy")
-        
+
         site_id = extract_prefix(request_id)
         log_message(request_id, f"Using Site ID / Target Name: {site_id}")
 
         unique_id = str(uuid.uuid4())
         work_dir = os.path.join(WORK_BASE_DIR, unique_id)
-        
+
         os.makedirs(work_dir, exist_ok=True)
         log_message(request_id, f"Workspace created: {work_dir}")
 
@@ -58,13 +57,11 @@ def main():
         create_firebase_rc_file(request_id, work_dir, web_deploy_project_id)
         create_firebase_json_with_target(request_id, work_dir, site_id, azure_repo_names)
 
-        # Prepare the public_staging_dir once before staging any repos
         public_staging_dir = os.path.join(work_dir, "deploy_staging", site_id)
         if os.path.exists(public_staging_dir):
             shutil.rmtree(public_staging_dir, ignore_errors=True)
         os.makedirs(public_staging_dir, exist_ok=True)
 
-        # Clone, build, and stage for each repo
         project_repo_paths = []
         for repo_name in azure_repo_names:
             log_message(request_id, f"[mobilePreviewDeploy] Cloning and building repo: {repo_name}")
@@ -72,35 +69,39 @@ def main():
             project_repo_paths.append((repo_name, project_repo_path))
         build_flutter_app(request_id, work_dir, project_repo_paths)
 
-        # Stage each build/web to the correct subdirectory
         for repo_name, project_repo_path in project_repo_paths:
             stage_files_for_deployment(request_id, work_dir, site_id, repo_name, project_repo_path)
 
-        # Only create site and apply target after successful build and staging
         ensure_firebase_site_exists_create_only(request_id, site_id, web_deploy_project_id)
         apply_firebase_target(request_id, work_dir, site_id, site_id, web_deploy_project_id)
-
         deploy_with_firebase_cli(request_id, work_dir, site_id, web_deploy_project_id)
-        log_file_path = os.path.join(work_dir, f"{request_id}_{web_deploy_file_name}")
-        with open(log_file_path, "w") as f:
-            f.write("\n".join(global_log_buffer))
-        create_artifact_log_file(log_file_path, request_id)
-        upload_to_gcs(log_file_path, f"{request_id}/{web_deploy_file_name}", gcs_bucket_name, web_deploy_project_id)
-        log_message(request_id, f"[mobilePreviewDeploy] Deployment log uploaded to GCS: {request_id}/{web_deploy_file_name}")
 
     except Exception as e:
         log_message(request_id, f"Error: {str(e)}", error=True)
         import traceback
         logging.error(traceback.format_exc())
         raise
+
     finally:
-        if work_dir and os.path.exists(work_dir):
-            try:
+        try:
+            if work_dir and os.path.exists(work_dir):
+                log_file_path = os.path.join(work_dir, f"{request_id}_{web_deploy_file_name}")
+                if 'global_log_buffer' in globals() and global_log_buffer:
+                    with open(log_file_path, "w") as f:
+                        f.write("\n".join(global_log_buffer))
+                    create_artifact_log_file(log_file_path, request_id)
+                    upload_to_gcs(log_file_path, f"{request_id}/{web_deploy_file_name}", os.getenv("GCS_BUCKET_NAME"), web_deploy_project_id)
+                    log_message(request_id, f"[main:finally] Deployment log uploaded to GCS (final block): {request_id}/{web_deploy_file_name}")
+        except Exception as log_upload_error:
+            log_message(request_id, f"[main:finally] Failed to upload deployment log in finally block: {log_upload_error}", error=True)
+
+        try:
+            if work_dir and os.path.exists(work_dir):
                 os.chdir("/")
                 shutil.rmtree(work_dir, ignore_errors=False)
                 log_message(request_id, f"Workspace cleaned up: {work_dir}")
-            except OSError as cleanup_error:
-                 log_message(request_id, f"Error during workspace cleanup: {cleanup_error}", error=True)
+        except OSError as cleanup_error:
+            log_message(request_id, f"Error during workspace cleanup: {cleanup_error}", error=True)
 
 def create_artifact_log_file(file_path, request_id):
     work_dir = WORK_BASE_DIR;
