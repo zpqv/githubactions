@@ -18,7 +18,7 @@ on:
 
 jobs:
   mobile-preview-deploy:
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     env:
       REQUEST_ID: ${{ github.event.inputs.REQUEST_ID }}
       AZURE_PROJECT_NAME: ${{ github.event.inputs.AZURE_PROJECT_NAME }}
