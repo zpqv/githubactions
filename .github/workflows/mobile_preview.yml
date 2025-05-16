@@ -45,45 +45,45 @@ jobs:
           echo "Listing files:"
           ls -la
 
-      # - name: Install Python Dependencies
-      #   run: |
-      #     pip install -r functions/src/docker/flutter-operations/requirements.txt
+      - name: Install Python Dependencies
+        run: |
+          pip install -r requirements.txt
 
-      # ------------------------ Flutter ------------------------
-      # - name: Set up Flutter 3.29.2
-      #   uses: subosito/flutter-action@v2
-      #   with:
-      #     flutter-version: '3.29.2'
-      #     channel: 'stable'
-      #     cache: true
+      ------------------------ Flutter ------------------------
+      - name: Set up Flutter 3.29.2
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.2'
+          channel: 'stable'
+          cache: true
 
-      # - name: Cache Flutter SDK
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: ~/.pub-cache
-      #     key: ${{ runner.os }}-flutter-${{ hashFiles('pubspec.yaml') }}
-      #     restore-keys: |
-      #       ${{ runner.os }}-flutter-
+      - name: Cache Flutter SDK
+        uses: actions/cache@v3
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-flutter-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-
 
-      # - name: Install Flutter Dependencies
-      #   run: flutter pub get
+      - name: Install Flutter Dependencies
+        run: flutter pub get
 
-      # # ------------------------ Firebase CLI ------------------------
-      # - name: Cache Firebase CLI
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: ~/.cache/firebase
-      #     key: ${{ runner.os }}-firebase-cli
-      #     restore-keys: |
-      #       ${{ runner.os }}-firebase-cli
+      # ------------------------ Firebase CLI ------------------------
+      - name: Cache Firebase CLI
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/firebase
+          key: ${{ runner.os }}-firebase-cli
+          restore-keys: |
+            ${{ runner.os }}-firebase-cli
 
-      # - name: Install Firebase CLI
-      #   run: |
-      #     if ! command -v firebase &> /dev/null; then
-      #       curl -sL https://firebase.tools | bash
-      #     else
-      #       echo "Firebase CLI already installed"
-      #     fi
+      - name: Install Firebase CLI
+        run: |
+          if ! command -v firebase &> /dev/null; then
+            curl -sL https://firebase.tools | bash
+          else
+            echo "Firebase CLI already installed"
+          fi
 
       # ------------------------ Run Python Script ------------------------
       # - name: Execute mobilePreviewDeploy
