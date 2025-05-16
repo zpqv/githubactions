@@ -163,8 +163,8 @@ jobs:
       - name: Notify failure via curl
         if: ${{ failure() }}
         run: |
-        echo "Job failed"
-        #Later replace with curl command
+          echo "Job failed"
+          #Later replace with curl command
       
   ios:
     runs-on: macos-15
@@ -357,5 +357,5 @@ jobs:
       - name: Notify failure via curl
         if: ${{ failure() }}
         run: |
-        echo "Job failed"
-        #Later replace with curl command
+          echo "Job failed"
+          #Later replace with curl command
