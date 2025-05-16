@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Create Flutter Version File
-        run: echo "3.27.0" > flutter_version.txt
+        run: echo "3.29.2" > flutter_version.txt
 
       - name: Check Secrets (safe debug)
         run: |
@@ -48,7 +48,7 @@ jobs:
       - name: Install Flutter if not cached
         if: steps.flutter-cache.outputs.cache-hit != 'true'
         run: |
-          git clone https://github.com/flutter/flutter.git -b 3.27.0 ~/.flutter
+          git clone https://github.com/flutter/flutter.git -b 3.29.2 ~/.flutter
 
       - name: Add Flutter to PATH
         run: echo "$HOME/.flutter/bin" >> $GITHUB_PATH
@@ -150,7 +150,7 @@ jobs:
 
     steps:
       - name: Create Flutter Version File
-        run: echo "3.27.0" > flutter_version.txt
+        run: echo "3.29.2" > flutter_version.txt
 
       - name: Check Secrets (safe debug)
         run: |
@@ -183,7 +183,7 @@ jobs:
       - name: Install Flutter if not cached
         if: steps.flutter-cache.outputs.cache-hit != 'true'
         run: |
-          git clone https://github.com/flutter/flutter.git -b 3.27.0 ~/.flutter
+          git clone https://github.com/flutter/flutter.git -b 3.29.2 ~/.flutter
 
       - name: Add Flutter to PATH
         run: echo "$HOME/.flutter/bin" >> $GITHUB_PATH
@@ -243,6 +243,9 @@ jobs:
           key: ${{ runner.os }}-pods-${{ hashFiles('project/ios/Podfile.lock') }}
           restore-keys: |
             ${{ runner.os }}-pods-
+            
+      - name: Precache Flutter iOS artifacts
+        run: flutter precache --ios
 
       - name: Install CocoaPods
         run: |
