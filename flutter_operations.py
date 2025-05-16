@@ -84,7 +84,7 @@ def main():
         log_file_path = os.path.join(work_dir, f"{request_id}_{web_deploy_file_name}")
         with open(log_file_path, "w") as f:
             f.write("\n".join(global_log_buffer))
-        create_artifact_log_file(log_file_path)
+        create_artifact_log_file(log_file_path, request_id)
         upload_to_gcs(log_file_path, f"{request_id}/{web_deploy_file_name}", gcs_bucket_name, web_deploy_project_id)
         log_message(request_id, f"[mobilePreviewDeploy] Deployment log uploaded to GCS: {request_id}/{web_deploy_file_name}")
 
@@ -102,11 +102,11 @@ def main():
             except OSError as cleanup_error:
                  log_message(request_id, f"Error during workspace cleanup: {cleanup_error}", error=True)
 
-def create_artifact_log_file(file_path):
+def create_artifact_log_file(file_path, request_id):
     work_dir = WORK_BASE_DIR;
     dest_path = os.path.join(work_dir, "artifact_logs.log")
     shutil.copy(file_path, dest_path)
-    log_message(f"Artifact log file created: {dest_path}")
+    log_message(request_id, f"Artifact log file created: {dest_path}")
     
 def extract_prefix(input_str):
     # Split the input string at the underscore
