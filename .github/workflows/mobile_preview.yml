@@ -63,5 +63,5 @@ jobs:
           fi
 
       # ------------------------ Run Python Script ------------------------
-      # - name: Execute mobilePreviewDeploy
-      #   run: python functions/src/docker/flutter-operations/flutter_operations.py
+      - name: Execute mobilePreviewDeploy
+        run: python flutter_operations.py
