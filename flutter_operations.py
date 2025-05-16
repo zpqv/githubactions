@@ -6,6 +6,7 @@ import uuid
 import json
 from urllib.parse import quote
 from google.cloud import storage
+import re
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 
@@ -83,6 +84,7 @@ def main():
         log_file_path = os.path.join(work_dir, f"{request_id}_{web_deploy_file_name}")
         with open(log_file_path, "w") as f:
             f.write("\n".join(global_log_buffer))
+        create_artifact_log_file(log_file_path)
         upload_to_gcs(log_file_path, f"{request_id}/{web_deploy_file_name}", gcs_bucket_name, web_deploy_project_id)
         log_message(request_id, f"[mobilePreviewDeploy] Deployment log uploaded to GCS: {request_id}/{web_deploy_file_name}")
 
@@ -100,8 +102,31 @@ def main():
             except OSError as cleanup_error:
                  log_message(request_id, f"Error during workspace cleanup: {cleanup_error}", error=True)
 
+def create_artifact_log_file(file_path):
+    work_dir = WORK_BASE_DIR;
+    dest_path = os.path.join(work_dir, "artifact_logs.log")
+    shutil.copy(file_path, dest_path)
+    log_message(f"Artifact log file created: {dest_path}")
+    
 def extract_prefix(input_str):
-    return input_str.split('_')[0].split('-')[0]
+    # Split the input string at the underscore
+    parts = input_str.split('_')
+    prefix = parts[0] if parts else input_str
+
+    # Define a regex pattern to match UUIDs
+    uuid_pattern = re.compile(
+        r'^([0-9a-fA-F]{8})-([0-9a-fA-F]{4})-'
+        r'([0-9a-fA-F]{4})-([0-9a-fA-F]{4})-'
+        r'([0-9a-fA-F]{12})$'
+    )
+
+    match = uuid_pattern.match(prefix)
+    if match:
+        # Concatenate the first and second groups to form the site_id
+        return match.group(1) + match.group(2) + match.group(3) + match.group(4)
+    else:
+        # For non-UUID formats, return the entire prefix
+        return prefix
 
 def setup_service_account(request_id, work_dir, azure_pat):
     log_message(request_id, "[setup_service_account] Setting up service account...")
