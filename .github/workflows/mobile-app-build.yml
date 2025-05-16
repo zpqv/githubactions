@@ -143,6 +143,29 @@ jobs:
             --header 'Content-Type: application/json' \
             --data "{\"id\": \"$businessIdeaId\", \"repoName\": \"$repoName\", \"platform\": \"Android\"}"
       
+      - name: Archive logs
+        if: always()
+        run: |
+          mkdir -p logs
+          cp -r $RUNNER_TEMP/_github_home/_temp/*.log logs/ || true
+          cp -r $RUNNER_TEMP/_github_workflow/*.log logs/ || true
+          cp -r /Users/runner/Library/Logs logs/macos_logs || true
+          find . -name "*.log" -exec cp {} logs/ \; || true
+
+      - name: Upload logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+        name: build-logs-${{ matrix.os || 'default' }}
+        path: logs
+            
+      # ------------------------ Notify incase of failure ------------------------
+      - name: Notify failure via curl
+        if: ${{ failure() }}
+        run: |
+        echo "Job failed"
+        #Later replace with curl command
+      
   ios:
     runs-on: macos-15
     env:
@@ -313,3 +336,26 @@ jobs:
           curl --location "$url" \
             --header 'Content-Type: application/json' \
             --data "{\"id\": \"$businessIdeaId\", \"repoName\": \"$repoName\", \"platform\": \"iOS\"}"
+      
+      - name: Archive logs
+        if: always()
+        run: |
+          mkdir -p logs
+          cp -r $RUNNER_TEMP/_github_home/_temp/*.log logs/ || true
+          cp -r $RUNNER_TEMP/_github_workflow/*.log logs/ || true
+          cp -r /Users/runner/Library/Logs logs/macos_logs || true
+          find . -name "*.log" -exec cp {} logs/ \; || true
+
+      - name: Upload logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+        name: build-logs-${{ matrix.os || 'default' }}
+        path: logs
+            
+      # ------------------------ Notify incase of failure ------------------------
+      - name: Notify failure via curl
+        if: ${{ failure() }}
+        run: |
+        echo "Job failed"
+        #Later replace with curl command
