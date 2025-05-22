@@ -1,15 +1,27 @@
-name: Mobile App Build
+name: Mobile App Publish
+run-name: "Mobile Publish: ${{ github.event.inputs.requestId }}"
 
 on:
   workflow_dispatch:
     inputs:
+      targetEnv:
+        description: 'Target environment'
+        required: true
+      businessIdeaId:
+        description: 'Business Idea ID'
+        required: true
+      requestId:
+        description: 'Request ID'
+        required: true
       project_url:
         description: 'Azure DevOps Git repo URL (omit https://)'
         required: true
 
 jobs:
   android:
-    runs-on: macos-15
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.targetEnv }}
+    
     env:
       FLUTTER_HOME: ~/.flutter
 
@@ -31,10 +43,11 @@ jobs:
       - name: Clone Azure DevOps project
         run: |
           git config --global http.sslVerify false
-          git clone --branch dev https://${AZURE_GIT_USERNAME}:${AZURE_PAT}@${{ github.event.inputs.project_url }} project
+          git clone --branch master https://${AZURE_GIT_USERNAME}:${AZURE_PAT}@${{ github.event.inputs.project_url }} project
         env:
           AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
           AZURE_PAT: ${{ secrets.AZURE_PAT }}
+          # BRANCH: ${{ vars.BRANCH }}
 
       - name: Cache Flutter SDK
         id: flutter-cache
@@ -166,196 +179,200 @@ jobs:
           echo "Job failed"
           #Later replace with curl command
       
-  ios:
-    runs-on: macos-15
-    env:
-      FLUTTER_HOME: ~/.flutter
+  # ios:
+  #   runs-on: macos-15
+  #   environment: ${{ github.event.inputs.targetEnv }}
+    
+  #   env:
+  #     FLUTTER_HOME: ~/.flutter
 
-    steps:
-      - name: Create Flutter Version File
-        run: echo "3.29.2" > flutter_version.txt
+  #   steps:
+  #     - name: Create Flutter Version File
+  #       run: echo "3.29.2" > flutter_version.txt
 
-      - name: Check Secrets (safe debug)
-        run: |
-          echo "Git user is set: ${AZURE_GIT_USERNAME:+yes}"
-          echo "PAT is set: ${AZURE_PAT:+yes}"
-        env:
-          AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
-          AZURE_PAT: ${{ secrets.AZURE_PAT }}
+  #     - name: Check Secrets (safe debug)
+  #       run: |
+  #         echo "Git user is set: ${AZURE_GIT_USERNAME:+yes}"
+  #         echo "PAT is set: ${AZURE_PAT:+yes}"
+  #       env:
+  #         AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
+  #         AZURE_PAT: ${{ secrets.AZURE_PAT }}
+          
 
-      - name: Checkout this GitHub repo
-        uses: actions/checkout@v4
+  #     - name: Checkout this GitHub repo
+  #       uses: actions/checkout@v4
 
-      - name: Clone Azure DevOps project
-        run: |
-          git config --global http.sslVerify false
-          git clone --branch dev https://${AZURE_GIT_USERNAME}:${AZURE_PAT}@${{ github.event.inputs.project_url }} project
-        env:
-          AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
-          AZURE_PAT: ${{ secrets.AZURE_PAT }}
+  #     - name: Clone Azure DevOps project
+  #       run: |
+  #         git config --global http.sslVerify false
+  #         git clone --branch ${BRANCH} https://${AZURE_GIT_USERNAME}:${AZURE_PAT}@${{ github.event.inputs.project_url }} project
+  #       env:
+  #         AZURE_GIT_USERNAME: ${{ secrets.AZURE_GIT_USERNAME }}
+  #         AZURE_PAT: ${{ secrets.AZURE_PAT }}
+  #         BRANCH: ${{ vars.BRANCH }}
 
-      - name: Cache Flutter SDK
-        id: flutter-cache
-        uses: actions/cache@v3
-        with:
-          path: ~/.flutter
-          key: ${{ runner.os }}-flutter-${{ hashFiles('flutter_version.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-flutter-
+  #     - name: Cache Flutter SDK
+  #       id: flutter-cache
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: ~/.flutter
+  #         key: ${{ runner.os }}-flutter-${{ hashFiles('flutter_version.txt') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-flutter-
 
-      - name: Install Flutter if not cached
-        if: steps.flutter-cache.outputs.cache-hit != 'true'
-        run: |
-          git clone https://github.com/flutter/flutter.git -b 3.29.2 ~/.flutter
+  #     - name: Install Flutter if not cached
+  #       if: steps.flutter-cache.outputs.cache-hit != 'true'
+  #       run: |
+  #         git clone https://github.com/flutter/flutter.git -b 3.29.2 ~/.flutter
 
-      - name: Add Flutter to PATH
-        run: echo "$HOME/.flutter/bin" >> $GITHUB_PATH
+  #     - name: Add Flutter to PATH
+  #       run: echo "$HOME/.flutter/bin" >> $GITHUB_PATH
 
-      - name: Cache Pub Packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.pub-cache
-          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pub-
+  #     - name: Cache Pub Packages
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: ~/.pub-cache
+  #         key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-pub-
 
-      - name: Install Pub Packages
-        run: flutter pub get
-        working-directory: project
+  #     - name: Install Pub Packages
+  #       run: flutter pub get
+  #       working-directory: project
 
-      - name: Cache Homebrew
-        id: brew-cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/Library/Caches/Homebrew
-            ~/.brew-cache
-          key: ${{ runner.os }}-brew-cache
+  #     - name: Cache Homebrew
+  #       id: brew-cache
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: |
+  #           ~/Library/Caches/Homebrew
+  #           ~/.brew-cache
+  #         key: ${{ runner.os }}-brew-cache
 
-      - name: Install Homebrew and Fastlane if not cached
-        if: steps.brew-cache.outputs.cache-hit != 'true'
-        run: |
-          export HOMEBREW_CACHE="$HOME/.brew-cache"
-          mkdir -p $HOMEBREW_CACHE
-          brew install fastlane
+  #     - name: Install Homebrew and Fastlane if not cached
+  #       if: steps.brew-cache.outputs.cache-hit != 'true'
+  #       run: |
+  #         export HOMEBREW_CACHE="$HOME/.brew-cache"
+  #         mkdir -p $HOMEBREW_CACHE
+  #         brew install fastlane
 
-      - name: Cache Ruby Gems
-        id: gems-cache
-        uses: actions/cache@v3
-        with:
-          path: vendor/bundle
-          key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-gems-
+  #     - name: Cache Ruby Gems
+  #       id: gems-cache
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: vendor/bundle
+  #         key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-gems-
 
-      - name: Install Bundler and Fastlane (Ruby) if not cached
-        if: steps.gems-cache.outputs.cache-hit != 'true'
-        run: |
-          gem install bundler
-          bundle config path vendor/bundle
-          bundle install || true
+  #     - name: Install Bundler and Fastlane (Ruby) if not cached
+  #       if: steps.gems-cache.outputs.cache-hit != 'true'
+  #       run: |
+  #         gem install bundler
+  #         bundle config path vendor/bundle
+  #         bundle install || true
 
-      - name: Cache CocoaPods
-        id: cocoapods-cache   # <- this ID is used in the conditional check
-        uses: actions/cache@v3
-        with:
-          path: |
-            ios/Pods
-            ios/.symlinks
-            ios/Podfile.lock
-            ~/Library/Caches/CocoaPods
-          key: ${{ runner.os }}-pods-${{ hashFiles('project/ios/Podfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pods-
+  #     - name: Cache CocoaPods
+  #       id: cocoapods-cache   # <- this ID is used in the conditional check
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: |
+  #           ios/Pods
+  #           ios/.symlinks
+  #           ios/Podfile.lock
+  #           ~/Library/Caches/CocoaPods
+  #         key: ${{ runner.os }}-pods-${{ hashFiles('project/ios/Podfile.lock') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-pods-
             
-      - name: Precache Flutter iOS artifacts
-        run: flutter precache --ios
+  #     - name: Precache Flutter iOS artifacts
+  #       run: flutter precache --ios
 
-      - name: Install CocoaPods if not cached
-        if: steps.cocoapods-cache.outputs.cache-hit != 'true'
-        run: |
-          cd project/ios
-          pod install
+  #     - name: Install CocoaPods if not cached
+  #       if: steps.cocoapods-cache.outputs.cache-hit != 'true'
+  #       run: |
+  #         cd project/ios
+  #         pod install
 
-      - name: Setup Android/iOS Secrets
-        run: |
-          echo "${{ secrets.IOS_API_KEY_JSON }}" | base64 --decode > project/ios/ios_api_key.json
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp project/ios/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+  #     - name: Setup Android/iOS Secrets
+  #       run: |
+  #         echo "${{ secrets.IOS_API_KEY_JSON }}" | base64 --decode > project/ios/ios_api_key.json
+  #         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+  #         cp project/ios/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
 
-      - name: Install Apple Provisioning Profile
-        run: |
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp project/ios/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+  #     - name: Install Apple Provisioning Profile
+  #       run: |
+  #         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+  #         cp project/ios/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
 
-      - name: Debug Provisioning Profile
-        run: ls -la ~/Library/MobileDevice/Provisioning\ Profiles && file ~/Library/MobileDevice/Provisioning\ Profiles/*
+  #     - name: Debug Provisioning Profile
+  #       run: ls -la ~/Library/MobileDevice/Provisioning\ Profiles && file ~/Library/MobileDevice/Provisioning\ Profiles/*
 
-      - name: Import iOS Certificate
-        uses: apple-actions/import-codesign-certs@v1
-        with:
-          p12-file-base64: ${{ secrets.KEY_P12 }}
-          p12-password: ${{ secrets.IOS_CERT_PASSWORD }}
+  #     - name: Import iOS Certificate
+  #       uses: apple-actions/import-codesign-certs@v1
+  #       with:
+  #         p12-file-base64: ${{ secrets.KEY_P12 }}
+  #         p12-password: ${{ secrets.IOS_CERT_PASSWORD }}
 
-      - name: Get iOS App version from App Store
-        run: fastlane version_update --verbose
-        working-directory: project/ios
+  #     - name: Get iOS App version from App Store
+  #       run: fastlane version_update --verbose
+  #       working-directory: project/ios
 
-      - name: Configuring Xcode project
-        run: fastlane configXcode --verbose
-        working-directory: project/ios
+  #     - name: Configuring Xcode project
+  #       run: fastlane configXcode --verbose
+  #       working-directory: project/ios
 
-      - name: Reading ExportOptions
-        run: cat ExportOptions.plist
-        working-directory: project/ios
+  #     - name: Reading ExportOptions
+  #       run: cat ExportOptions.plist
+  #       working-directory: project/ios
 
-      - name: Build iOS IPA
-        run: flutter build ipa --export-options-plist=ios/ExportOptions.plist --no-tree-shake-icons
-        working-directory: project
+  #     - name: Build iOS IPA
+  #       run: flutter build ipa --export-options-plist=ios/ExportOptions.plist --no-tree-shake-icons
+  #       working-directory: project
 
-      - name: Copy iOS generated IPA to ios directory and select latest Xcode
-        run: |
-          cp project/build/ios/ipa/*.ipa project/ios/Runner.ipa
-          cd project/ios
-          latest_xcode=$(ls /Applications | grep 'Xcode' | sort -Vr | head -n 1)
-          echo "Selecting the latest Xcode version: $latest_xcode"
-          sudo xcode-select -s "/Applications/$latest_xcode"
-          xcodebuild -version
+  #     - name: Copy iOS generated IPA to ios directory and select latest Xcode
+  #       run: |
+  #         cp project/build/ios/ipa/*.ipa project/ios/Runner.ipa
+  #         cd project/ios
+  #         latest_xcode=$(ls /Applications | grep 'Xcode' | sort -Vr | head -n 1)
+  #         echo "Selecting the latest Xcode version: $latest_xcode"
+  #         sudo xcode-select -s "/Applications/$latest_xcode"
+  #         xcodebuild -version
 
-      - name: Publish iOS
-        run: fastlane beta
-        working-directory: project/ios
+  #     - name: Publish iOS
+  #       run: fastlane beta
+  #       working-directory: project/ios
 
-      - name: Notify after app uploaded to App Store (iOS)
-        run: |
-          CONFIG_FILE="project/assets/config/config.json"
-          engineName=$(grep 'engineName' "$CONFIG_FILE" | awk -F': ' '{print $2}' | tr -d '",')
-          businessIdeaId=$(grep 'businessIdeaId' "$CONFIG_FILE" | awk -F': ' '{print $2}' | tr -d '",')
-          repoName=$(echo "${GITHUB_REPOSITORY}" | cut -d'/' -f2 | cut -d'-' -f1)
-          url="https://us-central1-$engineName.cloudfunctions.net/notifyOnAppUploadApi"
-          curl --location "$url" \
-            --header 'Content-Type: application/json' \
-            --data "{\"id\": \"$businessIdeaId\", \"repoName\": \"$repoName\", \"platform\": \"iOS\"}"
+  #     - name: Notify after app uploaded to App Store (iOS)
+  #       run: |
+  #         CONFIG_FILE="project/assets/config/config.json"
+  #         engineName=$(grep 'engineName' "$CONFIG_FILE" | awk -F': ' '{print $2}' | tr -d '",')
+  #         businessIdeaId=$(grep 'businessIdeaId' "$CONFIG_FILE" | awk -F': ' '{print $2}' | tr -d '",')
+  #         repoName=$(echo "${GITHUB_REPOSITORY}" | cut -d'/' -f2 | cut -d'-' -f1)
+  #         url="https://us-central1-$engineName.cloudfunctions.net/notifyOnAppUploadApi"
+  #         curl --location "$url" \
+  #           --header 'Content-Type: application/json' \
+  #           --data "{\"id\": \"$businessIdeaId\", \"repoName\": \"$repoName\", \"platform\": \"iOS\"}"
       
-      # - name: Archive logs
-      #   if: always()
-      #   run: |
-      #     mkdir -p logs
-      #     cp -r $RUNNER_TEMP/_github_home/_temp/*.log logs/ || true
-      #     cp -r $RUNNER_TEMP/_github_workflow/*.log logs/ || true
-      #     cp -r /Users/runner/Library/Logs logs/macos_logs || true
-      #     find . -name "*.log" -exec cp {} logs/ \; || true
+  #     # - name: Archive logs
+  #     #   if: always()
+  #     #   run: |
+  #     #     mkdir -p logs
+  #     #     cp -r $RUNNER_TEMP/_github_home/_temp/*.log logs/ || true
+  #     #     cp -r $RUNNER_TEMP/_github_workflow/*.log logs/ || true
+  #     #     cp -r /Users/runner/Library/Logs logs/macos_logs || true
+  #     #     find . -name "*.log" -exec cp {} logs/ \; || true
 
-      # - name: Upload logs as artifact
-      #   if: always()
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: build-logs-${{ matrix.os || 'default' }}
-      #     path: logs
+  #     # - name: Upload logs as artifact
+  #     #   if: always()
+  #     #   uses: actions/upload-artifact@v4
+  #     #   with:
+  #     #     name: build-logs-${{ matrix.os || 'default' }}
+  #     #     path: logs
             
-      # ------------------------ Notify incase of failure ------------------------
-      - name: Notify failure via curl
-        if: ${{ failure() }}
-        run: |
-          echo "Job failed"
-          #Later replace with curl command
+  #     # ------------------------ Notify incase of failure ------------------------
+  #     - name: Notify failure via curl
+  #       if: ${{ failure() }}
+  #       run: |
+  #         echo "Job failed"
+  #         #Later replace with curl command
