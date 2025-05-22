@@ -81,7 +81,8 @@ jobs:
 
       # ------------------------ Run Python Script ------------------------
       - name: Execute mobilePreviewDeploy
-        run: python mobile_app_preview.py
+        # run: python mobile_app_preview.py
+        run: python flutter_operations.py
 
       # ------------------------ Upload to Artifact ------------------------
       - name: Upload artifact log file
