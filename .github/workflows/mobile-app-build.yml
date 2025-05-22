@@ -49,6 +49,7 @@ jobs:
           AZURE_PAT: ${{ secrets.AZURE_PAT }}
           # BRANCH: ${{ vars.BRANCH }}
 
+       # ------------------ Flutter SDK Cache ------------------
       - name: Cache Flutter SDK
         id: flutter-cache
         uses: actions/cache@v3
@@ -66,6 +67,7 @@ jobs:
       - name: Add Flutter to PATH
         run: echo "$HOME/.flutter/bin" >> $GITHUB_PATH
 
+    # ------------------ Pub Cache ------------------
       - name: Cache Pub Packages
         uses: actions/cache@v3
         with:
@@ -78,38 +80,17 @@ jobs:
         run: flutter pub get
         working-directory: project
 
-      - name: Cache Homebrew
-        id: brew-cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/Library/Caches/Homebrew
-            ~/.brew-cache
-          key: ${{ runner.os }}-brew-cache
-
-      - name: Install Homebrew and Fastlane if not cached
-        if: steps.brew-cache.outputs.cache-hit != 'true'
+    # ------------------ Fastlane (via gem) ------------------
+      - name: Install Fastlane (Linux-safe)
         run: |
-          export HOMEBREW_CACHE="$HOME/.brew-cache"
-          mkdir -p $HOMEBREW_CACHE
-          brew install fastlane
+          if ! command -v fastlane &> /dev/null; then
+            echo "Installing Fastlane via gem..."
+            sudo gem install fastlane -NV
+          else
+            echo "Fastlane already installed"
+          fi
 
-      - name: Cache Ruby Gems
-        id: gems-cache
-        uses: actions/cache@v3
-        with:
-          path: vendor/bundle
-          key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-gems-
-
-      - name: Install Bundler and Fastlane (Ruby) if not cached
-        if: steps.gems-cache.outputs.cache-hit != 'true'
-        run: |
-          gem install bundler
-          bundle config path vendor/bundle
-          bundle install || true
-
+    # ------------------ Java + Gradle ------------------
       - name: Setup Java 17 + Gradle cache
         uses: actions/setup-java@v4
         with:
@@ -117,11 +98,12 @@ jobs:
           distribution: temurin
           cache: gradle
 
+    # ------------------ Android SDK/NDK ------------------
       - name: Cache Android SDK NDK tools
         uses: actions/cache@v3
         with:
           path: |
-            /Users/runner/Library/Android/sdk/ndk
+            /usr/local/lib/android/sdk/ndk
           key: ${{ runner.os }}-ndk-cache
           restore-keys: |
             ${{ runner.os }}-ndk-
