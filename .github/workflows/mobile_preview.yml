@@ -1,8 +1,15 @@
 name: Mobile Preview Deploy
+run-name: "Mobile Preview: ${{ github.event.inputs.requestId }}"
 
 on:
   workflow_dispatch:
     inputs:
+      targetEnv:
+        description: 'Target environment'
+        required: true
+      businessIdeaId:
+        description: 'Business Idea ID'
+        required: true
       requestId:
         description: 'Request ID'
         required: true
@@ -21,7 +28,9 @@ on:
 
 jobs:
   mobile-preview-deploy:
-    runs-on: macos-15
+    runs-on: ubuntu-latest
+    # environment: ${{ github.event.inputs.targetEnv }}
+    
     env:
       REQUEST_ID: ${{ github.event.inputs.requestId }}
       AZURE_PROJECT_NAME: ${{ github.event.inputs.azureProjectName }}
@@ -30,8 +39,10 @@ jobs:
       GCS_BUCKET_NAME: ${{ github.event.inputs.gcsBucketName }}
       HOSTING_DOMAIN: ${{ github.event.inputs.hostingDomain }}
       OPERATION: mobilePreviewDeploy
+      # BRANCH: ${{ vars.BRANCH }}
 
     steps:
+          
       # ------------------------ Git ------------------------
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -53,9 +64,6 @@ jobs:
           flutter-version: '3.29.2'
           channel: 'stable'
 
-      - name: Install Flutter Dependencies
-        run: flutter pub get
-
       # ------------------------ Firebase CLI ------------------------
       - name: Install Firebase CLI via npm
         run: |
@@ -73,7 +81,7 @@ jobs:
 
       # ------------------------ Run Python Script ------------------------
       - name: Execute mobilePreviewDeploy
-        run: python flutter_operations.py
+        run: python mobile_app_preview.py
 
       # ------------------------ Upload to Artifact ------------------------
       - name: Upload artifact log file
